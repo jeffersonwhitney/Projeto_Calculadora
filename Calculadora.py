@@ -33,6 +33,11 @@ class Calculadora:
     except:
       print('Ocorreu um erro ao receber sua resposta')
       self.Iniciar()
+      
+    finally:
+            # Ensure the window is closed even if an exception occurs
+            self.janela.close()
+
 
 Calc = Calculadora()
 Calc.Iniciar()
