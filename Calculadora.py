@@ -1,43 +1,105 @@
-import PySimpleGUI as sg
+import PySimpleGUI as sg 
 
-class Calculadora:
-  def __init__(self):
-    self.digitando = True
-    self.numeros = ""
-    
-  def Iniciar(self):
-    #Layout
-    
-    self.layout = [
-      [sg.Text('Calculadora UMP-2000', justification='right', font=("Helvetica", 25))],
-      [sg.Output(size=(25,2), font=("Helvetica", 25))],# Onde mostram os numeros que serão calculados
-      [sg.Button('7', size=(5, 2),font=("Helvetica", 25)),sg.Button('8', size=(5, 2),font=("Helvetica", 25)),sg.Button('9', size=(5, 2),font=("Helvetica", 25)),sg.Button('/', size=(5, 2),font=("Helvetica", 25))],# 7,8,9,/
-      [sg.Button('4', size=(5, 2),font=("Helvetica", 25)),sg.Button('5', size=(5, 2),font=("Helvetica", 25)),sg.Button('6', size=(5, 2),font=("Helvetica", 25)),sg.Button('x', size=(5, 2),font=("Helvetica", 25))],# 4,5,6,x
-      [sg.Button('1', size=(5, 2),font=("Helvetica", 25)),sg.Button('2', size=(5, 2),font=("Helvetica", 25)),sg.Button('3', size=(5, 2),font=("Helvetica", 25)),sg.Button('-', size=(5, 2),font=("Helvetica", 25))],# 1,2,3,-
-      [sg.Button('0', size=(5, 2),font=("Helvetica", 25)),sg.Button('=', size=(5, 2),font=("Helvetica", 25)),sg.Button('C', size=(5, 2),font=("Helvetica", 25)),sg.Button('+', size=(5, 2),font=("Helvetica", 25))]# 0,=,+,C
-    ]
- 
-    # Criando a janela da Calculadora
-    self.janela = sg.Window('Calculadora',layout=self.layout)
+##-----CONFIGURAÇÕES PADRÃO----------------------------------##
+bw: dict = {'size':(7,2), 'font':('Franklin Gothic Book', 24), 'button_color':("black","#F8F8F8")}
+bt: dict = {'size':(7,2), 'font':('Franklin Gothic Book', 24), 'button_color':("black","#F1EABC")}
+bo: dict = {'size':(15,2), 'font':('Franklin Gothic Book', 24), 'button_color':("black","#ECA527"), 'focus':True}
+
+##-----LAYOUT DA CALCULADORA---------------------------------##
+layout: list = [
+    [sg.Text('Calculadora UMP-2000', size=(50,1), justification='right', background_color="#272533", 
+        text_color='white', font=('Franklin Gothic Book', 14, 'bold'))],
+    [sg.Text('0.0000', size=(18,1), justification='right', background_color='black', text_color='red', 
+        font=('Digital-7',48), relief='sunken', key="_DISPLAY_")],
+    [sg.Button('C',**bt), sg.Button('CE',**bt), sg.Button('%',**bt), sg.Button("/",**bt)],
+    [sg.Button('7',**bw), sg.Button('8',**bw), sg.Button('9',**bw), sg.Button("*",**bt)],
+    [sg.Button('4',**bw), sg.Button('5',**bw), sg.Button('6',**bw), sg.Button("-",**bt)],
+    [sg.Button('1',**bw), sg.Button('2',**bw), sg.Button('3',**bw), sg.Button("+",**bt)],    
+    [sg.Button('0',**bw), sg.Button('.',**bw), sg.Button('=',**bo, bind_return_key=True)]
+]
+
+window: object = sg.Window('PyDataMath-II', layout=layout, background_color="#272533", size=(580, 660), return_keyboard_events=True)
+
+
+##----Funções da Calculadora-------------------------------##
+var: dict = {'front':[], 'back':[], 'decimal':False, 'x_val':0.0, 'y_val':0.0, 'result':0.0, 'operator':''}
+
+#-----Funções Auxiliadoras--------------------------------##
+def format_number() -> float:
+    ''' Create a consolidated string of numbers from front and back lists '''
+    return float(''.join(var['front']).replace(',','') + '.' + ''.join(var['back']))
+
+
+def update_display(display_value: str):
+    ''' Update the calculator display after an event click '''
     try:
-      while True:
-        self.eventos, self.valores = self.janela.Read() #recebendo valores:
-        while self.digitando == True:
-          if self.eventos != '.':
-            self.numeros=str(self.numeros)+str(self.eventos)
-            print(self.numeros)
-            break
-          else:
-            print('error')
-            break
+        window['_DISPLAY_'].update(value='{:,.4f}'.format(display_value))
     except:
-      print('Ocorreu um erro ao receber sua resposta')
-      self.Iniciar()
-      
-    finally:
-            # Ensure the window is closed even if an exception occurs
-            self.janela.close()
+        window['_DISPLAY_'].update(value=display_value)
 
 
-Calc = Calculadora()
-Calc.Iniciar()
+#-----Eventos-------------------------------##
+def number_click(event: str):
+    ''' Number button button click event '''
+    global var
+    if var['decimal']:
+        var['back'].append(event)
+    else:
+        var['front'].append(event)
+    update_display(format_number())
+    
+
+def clear_click():
+    ''' CE or C button click event '''
+    global var
+    var['front'].clear()
+    var['back'].clear()
+    var['decimal'] = False 
+
+
+def operator_click(event: str):
+    ''' + - / * button click event '''
+    global var
+    var['operator'] = event
+    try:
+        var['x_val'] = format_number()
+    except:
+        var['x_val'] = var['result']
+    clear_click()
+
+
+def calculate_click():
+    ''' Equals button click event '''
+    global var
+    try:
+        var['y_val'] = format_number()
+    except ValueError: # Quando igual é clicado sem nenhum valor na calculadora
+        var['x_val'] = var['result']
+    try:
+        var['result'] = eval(str(var['x_val']) + var['operator'] + str(var['y_val']))
+        update_display(var['result'])
+        clear_click()    
+    except:
+        update_display("ERROR! DIV/0")
+        clear_click()
+        
+#----- EVENTO PRINCIPAL ------------------------------------##
+while True:
+    event, values = window.read()
+    print(event)
+    if event is None:
+        break
+    if event in ['0','1','2','3','4','5','6','7','8','9']:
+        number_click(event)
+    if event in ['Escape:27','C','CE']: # 'Escape:27 for keyboard control
+        clear_click()
+        update_display(0.0)
+        var['result'] = 0.0
+    if event in ['+','-','*','/']:
+        operator_click(event)
+    if event == '=':
+        calculate_click()
+    if event == '.':
+        var['decimal'] = True
+    if event == '%':
+        update_display(var['result'] / 100.0)
